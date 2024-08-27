@@ -71,7 +71,11 @@ class GP_qsar:
             predictions = self.predictor.predict(test_fps, return_std=False)
             return predictions
         
-    def evaluate_acquisition_functions(self, smiles, acquisition_function='EI'):
+    def evaluate_acquisition_functions(self, smiles, acquisition_function='EI', y_max = None, kappa=1):
+
+        if y_max == None:
+            y_max = np.max(self.y)
+
         if isinstance(smiles, str):
             smiles = [smiles]
         elif isinstance(smiles, np.ndarray):
@@ -81,30 +85,41 @@ class GP_qsar:
         x = self.descriptor.calculate_from_smi(smiles)
         
         # Get GP predictions and uncertainties
-        predictions, std_devs = self.predictor.predict(x, return_std=True)
-        
-        # Find the best observed value (for EI and PI)
-        y_max = np.max(self.y)
+        predictions, std = self.predictor.predict(x, return_std=True)
+
         
         # Evaluate acquisition functions
         if acquisition_function == 'EI':
-            # Expected Improvement
-            improvement = max(predictions - y_max, 0)
-            z = improvement / std_devs
-            ei = improvement * norm.cdf(z) + std_devs * norm.pdf(z)
+            # Avoid division by zero by ensuring y_std is positive
+            std = np.maximum(std, 1e-9)
+            
+            # Compute the improvement over the current best
+            improvement = predictions - y_max
+            
+            # Compute the standard normal CDF and PDF
+            norm_cdf = norm.cdf(improvement / std)
+            norm_pdf = norm.pdf(improvement / std)
+            
+            # Compute Expected Improvement
+            ei = improvement * norm_cdf + std * norm_pdf
+            
             return ei
         
         elif acquisition_function == 'PI':
-            # Probability of Improvement
-            improvement = y_max - predictions
-            z = improvement / std_devs
-            pi = norm.cdf(z)
+            # Avoid division by zero by ensuring y_std is positive
+            std = np.maximum(std, 1e-9)
+            
+            # Compute the improvement, ensuring it is non-negative
+            improvement = np.maximum(predictions - y_max, 0)
+            
+            # Compute the standard normal CDF for the normalized improvement
+            pi = norm.cdf(improvement / std)
+            
             return pi
         
         elif acquisition_function == 'UCB':
             # Upper Confidence Bound
-            kappa = 1.96  # Example value for kappa (can be tuned)
-            ucb = predictions + kappa * std_devs
+            ucb = predictions + kappa * std
             return ucb
         
         else:
