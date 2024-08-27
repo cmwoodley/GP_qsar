@@ -1,0 +1,8 @@
+setup.py
+GP_qsar.egg-info/PKG-INFO
+GP_qsar.egg-info/SOURCES.txt
+GP_qsar.egg-info/dependency_links.txt
+GP_qsar.egg-info/requires.txt
+GP_qsar.egg-info/top_level.txt
+gp_qsar/__init__.py
+gp_qsar/gp_qsar.py
