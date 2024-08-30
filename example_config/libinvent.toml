@@ -1,0 +1,130 @@
+# REINVENT4 TOML input example for reinforcement/curriculum learning
+#
+#
+# Curriculum learning in REINVENT4 is a multi-stage reinforcement learning
+# run.  One or more stages (auto CL) can be defined.  But it is also
+# possible to continue a run from any checkpoint file that is generated
+# during the run (manual CL).  Currently checkpoints are written at the end
+# of a run also when the run is forcefully terminated with Ctrl-C.
+
+
+run_type = "staged_learning"
+device = "cuda:0"  # set torch device e.g. "cpu"
+tb_logdir = "./outputs/tb_logs"  # name of the TensorBoard logging directory
+json_out_config = "./config/_staged_learning.json"  # write this TOML to JSON
+
+[parameters]
+
+# Uncomment one of the comment blocks below.  Each generator needs a model
+# file and possibly a SMILES file with seed structures.  If the run is to
+# be continued after termination, the agent_file would have to be replaced
+# with the checkpoint file.
+
+summary_csv_prefix = "./outputs/staged_learning"  # prefix for the CSV file
+use_checkpoint = false  # if true read diversity filter from agent_file
+purge_memories = false  # if true purge all diversity filter memories after each stage
+
+## LibInvent
+prior_file = "priors/libinvent.prior"
+agent_file = "priors/libinvent.prior"
+smiles_file = "./config/scaffolds_pmx.smi"  # 1 scaffold per line with attachment points
+
+batch_size = 64          # network
+
+unique_sequences = true  # if true remove all duplicates raw sequences in each step
+                         # only here for backward compatibility
+randomize_smiles = true  # if true shuffle atoms in SMILES randomly
+
+
+[learning_strategy]
+
+type = "dap"      # dap: only one supported
+sigma = 128       # sigma of the RL reward function
+rate = 0.0001     # for torch.optim
+
+
+[diversity_filter]  # optional, comment section out or remove if unneeded
+                    # NOTE: also memorizes all seen SMILES
+
+type = "IdenticalMurckoScaffold" # IdenticalTopologicalScaffold,
+                                 # ScaffoldSimilarity, PenalizeSameSmiles
+bucket_size = 25                 # memory size in number of compounds
+minscore = 0.5                   # only memorize if this threshold is exceeded
+minsimilarity = 0.4              # minimum similarity for ScaffoldSimilarity
+penalty_multiplier = 0.5         # penalty factor for PenalizeSameSmiles
+
+### Stage 1 - Initial reinforcement learning  run
+[[stage]]
+
+chkpt_file = './models/checkpoint_1.chkpt'
+
+termination = "simple"
+max_score = 0.3
+min_steps = 100
+max_steps = 1000
+
+### Stage 2 scoring components
+[stage.scoring]
+type = "geometric_mean"  # aggregation function
+filename = "./config/RL_scoring.toml"  # file with scoring setup for this stage
+filetype = "toml"  # file format: TOML or JSON, no default, must be present
+
+### Stage 2 - First sampling checkpoint
+[[stage]]
+
+chkpt_file = './models/checkpoint_2.chkpt'
+
+termination = "simple"
+max_score = 0.3
+min_steps = 5
+max_steps = 10
+
+[stage.scoring]
+type = "geometric_mean"  # aggregation function
+filename = "./config/RL_scoring.toml"  # file with scoring setup for this stage
+filetype = "toml"  # file format: TOML or JSON, no default, must be present
+
+### Stage 2 - First sampling checkpoint
+[[stage]]
+
+chkpt_file = './models/checkpoint_3.chkpt'
+
+termination = "simple"
+max_score = 0.1
+min_steps = 5
+max_steps = 10
+
+[stage.scoring]
+type = "geometric_mean"  # aggregation function
+filename = "./config/RL_scoring.toml"  # file with scoring setup for this stage
+filetype = "toml"  # file format: TOML or JSON, no default, must be present
+
+### Stage 2 - First sampling checkpoint
+[[stage]]
+
+chkpt_file = './models/checkpoint_4.chkpt'
+
+termination = "simple"
+max_score = 0.1
+min_steps = 5
+max_steps = 10
+
+[stage.scoring]
+type = "geometric_mean"  # aggregation function
+filename = "./config/RL_scoring.toml"  # file with scoring setup for this stage
+filetype = "toml"  # file format: TOML or JSON, no default, must be present
+
+### Stage 2 - First sampling checkpoint
+[[stage]]
+
+chkpt_file = './models/checkpoint_5.chkpt'
+
+termination = "simple"
+max_score = 0.1
+min_steps = 5
+max_steps = 10
+
+[stage.scoring]
+type = "geometric_mean"  # aggregation function
+filename = "./config/RL_scoring.toml"  # file with scoring setup for this stage
+filetype = "toml"  # file format: TOML or JSON, no default, must be present

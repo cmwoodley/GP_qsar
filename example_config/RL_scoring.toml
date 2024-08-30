@@ -1,0 +1,84 @@
+[[component]]
+[component.custom_alerts]
+
+[[component.custom_alerts.endpoint]]
+name = "Unwanted SMARTS"  # user chosen name for output
+weight = 0.8  # weight to fine-tune the relevance of this component
+
+params.smarts = [
+    "[*;r8]",
+    "[*;r9]",
+    "[*;r10]",
+    "[*;r11]",
+    "[*;r12]",
+    "[*;r13]",
+    "[*;r14]",
+    "[*;r15]",
+    "[*;r16]",
+    "[*;r17]",
+    "[#8][#8]",
+    "[#6;+]",
+    "[#16][#16]",
+    "[#7;!n][S;!$(S(=O)=O)]",
+    "[#7;!n][#7;!n]",
+    "C#C",
+    "C(=[O,S])[O,S]",
+    "[#7;!n][C;!$(C(=[O,N])[N,O])][#16;!s]",
+    "[#7;!n][C;!$(C(=[O,N])[N,O])][#7;!n]",
+    "[#7;!n][C;!$(C(=[O,N])[N,O])][#8;!o]",
+    "[#8;!o][C;!$(C(=[O,N])[N,O])][#16;!s]",
+    "[#8;!o][C;!$(C(=[O,N])[N,O])][#8;!o]",
+    "[#16;!s][C;!$(C(=[O,N])[N,O])][#16;!s]"
+]
+
+[[component]]
+[component.Qptuna]
+[[component.Qptuna.endpoint]]
+name = "GPmodel_activity"
+weight = 1.0
+params.model_file = "./models/model_activity.pkl"
+transform.type = "sigmoid"
+transform.high = 9.0
+transform.low = 3.0
+transform.k = 0.3
+
+[[component]]
+[component.Qptuna]
+[[component.Qptuna.endpoint]]
+name = "GPmodel_hlm"
+weight = 1.0
+params.model_file = "./models/model_hlm.pkl"
+transform.type = "sigmoid"
+transform.high = -1.0
+transform.low = -2.0
+transform.k = 0.3
+
+[[component]]
+[component.Qptuna]
+[[component.Qptuna.endpoint]]
+name = "GPmodel_logD"
+weight = 0.3
+params.model_file = "./models/model_logD.pkl"
+transform.type = "double_sigmoid"
+transform.high = 3.5
+transform.low = 1.0
+transform.coef_div = 3.0
+transform.coef_si = 20.0
+transform.coef_se = 20.0
+
+[[component]]
+[component.MolecularWeight]
+
+[[component.MolecularWeight.endpoint]]
+name = "Molecular weight"  # user chosen name for output
+weight = 0.3  # weight to fine-tune the relevance of this component
+
+# A transform ensures that the output from the scoring component ranges
+# from 0 to 1 to serve as a proper score.  Here we use a double sigmoid
+# to transform weights into the range 200-500 a.u.
+transform.type = "double_sigmoid"
+transform.high = 550.0
+transform.low = 200.0
+transform.coef_div = 550.0
+transform.coef_si = 20.0
+transform.coef_se = 20.0
