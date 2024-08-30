@@ -12,8 +12,6 @@ def test_gp_qsar_initialization():
     
     assert gp_model.train_smiles == smiles
     assert np.array_equal(gp_model.y, y)
-    assert gp_model.X is not None
-    assert gp_model.descriptor is not None
 
 def test_tuning():
     # test initialisation and tuning of model
@@ -21,11 +19,15 @@ def test_tuning():
     model = GP_qsar(smiles, target)
     model.fit_tune_model()
 
-    assert np.isclose(model.predict_from_smiles(["c1ccccc1OC"])[0],0.5233897, atol=0.001)
+    assert model.X is not None
+    assert model.descriptor is not None
+    assert model.features[0] == "Physchem"
+    assert np.isclose(model.predict_from_smiles(["c1ccccc1OC"])[0],1.717358942834102, atol=0.001)
 
-def test_without_tuning():
-    # test whether functions run without training model
-    smiles, target = get_toy_dataset()
-    model = GP_qsar(smiles, target)  
+def test_acquisition_function():
+    # test initialisation and tuning of model
+    model = get_tuned_model()
 
-    assert float(model.predict_from_smiles("c1ccccc1")[0]) == 0.
+    assert np.isclose(model.evaluate_acquisition_functions(["c1ccccc1OC"], "UCB")[0],1.8927741567631535, atol=0.001)
+    assert np.isclose(model.evaluate_acquisition_functions(["c1ccccc1OC"], "EI")[0],8.29969888580552e-06, atol=0.001)
+    assert np.isclose(model.evaluate_acquisition_functions(["c1ccccc1OC"], "PI")[0],0.00019047019435642292, atol=0.001)

@@ -22,8 +22,5 @@ def get_toy_dataset():
 def get_tuned_model():
     smiles, target = get_toy_dataset()
     model = GP_qsar(smiles, target)
-    # model.fit_tune_model()
+    model.fit_tune_model()
     return model
-
-model = get_tuned_model()
-print(model.predict_from_smiles("c1ccccc1"))

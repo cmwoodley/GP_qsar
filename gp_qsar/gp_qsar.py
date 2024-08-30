@@ -158,7 +158,8 @@ class GP_qsar:
         
         elif acquisition_function == 'PI':
             pi = PI(predictions, std, y_max, tradeoff)
-        
+            return pi
+
         elif acquisition_function == 'UCB':
             ucb = UCB(predictions, std, kappa)
             return ucb
