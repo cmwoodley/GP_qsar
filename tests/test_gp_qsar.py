@@ -10,6 +10,8 @@ def test_gp_qsar_initialization():
     y = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
     gp_model = GP_qsar(train_smiles=smiles, train_y=y)
     
+    assert gp_model.X is None
+    assert gp_model.descriptor is None    
     assert gp_model.train_smiles == smiles
     assert np.array_equal(gp_model.y, y)
 

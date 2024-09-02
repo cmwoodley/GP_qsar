@@ -106,17 +106,6 @@ class GP_qsar:
 
     def _prepare_data(self):
         self.feature_dict = get_all_descriptors(self.train_smiles)
-        # initial_fps = np.array([AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(smi), 2, 2048) 
-        #                         for smi in self.train_smiles])
-        
-        # train_fps = self.VT.fit_transform(initial_fps)
-        # corr_matrix = np.corrcoef(train_fps, rowvar=False)
-        # upper = np.triu(corr_matrix, k=1)
-        # to_drop = [i for i in range(upper.shape[1]) if any(upper[:, i] > 0.9)]
-        # train_fps = np.delete(train_fps, to_drop, axis=1)
-        # train_fps = self.scaler.fit_transform(train_fps)
-        # self.X = train_fps
-        # self.descriptor = Descriptor(self.VT, self.scaler, to_drop)
 
     def fit_tune_model(self):
         self.predictor, self.X, self.features, self.VT, self.scaler, to_drop = tune_model(self.predictor, self.feature_dict, self.y, self.VT, self.scaler)
@@ -213,7 +202,7 @@ def tune_hyperparameters(gp, X, y):
         "kernel": kernels
     }
 
-    grid_search = GridSearchCV(gp, param_grid=param_grid, cv=5, n_jobs=-1, scoring="neg_mean_squared_error") 
+    grid_search = GridSearchCV(gp, param_grid=param_grid, cv=10, n_jobs=-1, scoring="neg_mean_squared_error") 
     grid_search.fit(X, y)
     
     return grid_search.best_estimator_, grid_search.best_score_
