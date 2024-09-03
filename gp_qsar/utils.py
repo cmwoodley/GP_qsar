@@ -57,6 +57,9 @@ def scaffold_split(smiles, y, random_state, test_size, cutoff):
     train_index, test_index = [], []
 
     singleton_clusters = [cluster for cluster, idx_list in cluster_dict.items() if len(idx_list) == 1]
+    # Raise error if all singleton clusters - to do: default to clustering with set number of clusters
+    if len(singleton_clusters) == len(smiles):
+        raise ValueError("Clustering produced all singleton clusters. Try increasing cutoff")
     train_index.extend([cluster_dict[cluster][0] for cluster in singleton_clusters])
 
     remaining_clusters = [cluster for cluster in cluster_dict if cluster not in singleton_clusters]

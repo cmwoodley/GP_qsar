@@ -114,8 +114,6 @@ class GP_qsar:
     def predict_from_smiles(self, smiles, uncert=False):
         if isinstance(smiles, str):
             smiles = [smiles]
-        elif isinstance(smiles, np.ndarray):
-            smiles = smiles.tolist()
         
         test_fps = self.descriptor.calculate_from_smi(smiles)
         if uncert:
@@ -131,8 +129,6 @@ class GP_qsar:
 
         if isinstance(smiles, str):
             smiles = [smiles]
-        elif isinstance(smiles, np.ndarray):
-            smiles = smiles.tolist()
         
         # Calculate descriptors for input SMILES
         x = self.descriptor.calculate_from_smi(smiles)

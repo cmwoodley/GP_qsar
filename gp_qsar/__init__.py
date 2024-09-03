@@ -1,1 +1,2 @@
-from .gp_qsar import GP_qsar, get_all_descriptors
+from .gp_qsar import GP_qsar
+from .utils import splitter

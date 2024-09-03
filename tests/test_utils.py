@@ -1,4 +1,7 @@
 import pytest
+# import sys
+# sys.path.insert(1,"./")
+from .store import get_drug_dataset
 from .store import get_toy_dataset
 from gp_qsar.utils import splitter
 import numpy as np
@@ -29,4 +32,33 @@ def test_splitting():
                 1.5200e-02,-2.4770e-01,1.2055e+00,9.0900e-02]
 
     assert all(smiles_te[i] == smiles_te_want[i] for i in range(len(smiles_te)))
+    assert np.allclose(np.array(y_tr), y_tr_want)
+
+    # Test None n_bins
+    with pytest.raises(ValueError):
+        smiles_tr, smiles_te, y_tr, y_te = splitter(smiles, y, method="stratified",n_bins=None)
+
+    # Test invalid splitting method
+    with pytest.raises(ValueError):
+        smiles_tr, smiles_te, y_tr, y_te = splitter(smiles, y, method="not_a_method")
+
+def test_structure_splitting():
+    smiles, y = get_drug_dataset()
+
+    # Test all singleton clusters error
+    with pytest.raises(ValueError):
+        smiles_tr, smiles_te, y_tr, y_te = splitter(smiles, y, method="scaffold",cutoff=0.3)
+
+    # Test None cutoff
+    with pytest.raises(ValueError):
+        smiles_tr, smiles_te, y_tr, y_te = splitter(smiles, y, method="scaffold",cutoff=None)
+
+    # Test split
+    smiles_tr, smiles_te, y_tr, y_te = splitter(smiles, y, method="scaffold",cutoff=0.7)
+    smiles_tr_want = ['CC(C)C','C1CCCCC1','C1=CC=CC=C1','COC','CC(C)(C)O','C(CN)O','CNC',
+                    'CCOCCO','C1=CC=CC=C1C(=O)O','CC(C)OCC','CNC(=O)C','CCO','CCN','CC(=O)O',
+                    'CC(C)C(=O)O']
+    y_tr_want = np.array([2.492,2.6307,2.8821,3.98258,0.4284,-0.0991,-1.0293,1.8137,
+                2.1167,2.7615,2.2472,3.0732,2.8821,2.82,4.1109])
+    assert all(smiles_tr[i] == smiles_tr_want[i] for i in range(len(smiles_tr)))
     assert np.allclose(np.array(y_tr), y_tr_want)
