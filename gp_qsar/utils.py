@@ -5,7 +5,7 @@ from rdkit.Chem import DataStructs
 from rdkit.Chem import rdMolDescriptors as rdmd
 from rdkit.ML.Cluster import Butina
 from sklearn.model_selection import StratifiedShuffleSplit
-from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import KBinsDiscretizer
 
 def stratified_split(smiles, y, random_state, test_size, n_bins):
