@@ -1,11 +1,12 @@
 # Importing modules
 import numpy as np
 from rdkit import Chem
-from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
-from sklearn.preprocessing import KBinsDiscretizer
-from rdkit.Chem import rdMolDescriptors as rdmd
 from rdkit.Chem import DataStructs
+from rdkit.Chem import rdMolDescriptors as rdmd
 from rdkit.ML.Cluster import Butina
+from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.preprocessing import KBinsDiscretizer
 
 def stratified_split(smiles, y, random_state, test_size, n_bins):
     """
