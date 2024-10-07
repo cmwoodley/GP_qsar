@@ -7,3 +7,8 @@ GP_qsar.egg-info/requires.txt
 GP_qsar.egg-info/top_level.txt
 gp_qsar/__init__.py
 gp_qsar/gp_qsar.py
+gp_qsar/utils.py
+tests/__init__.py
+tests/store.py
+tests/test_gp_qsar.py
+tests/test_utils.py

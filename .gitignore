@@ -1,2 +1,4 @@
 .coverage*
 ./htmlcov
+./gp_qsar/__pycache__/*
+./GP_qsar.egg*
