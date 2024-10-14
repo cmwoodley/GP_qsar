@@ -1,12 +1,81 @@
 # Importing modules
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem import AllChem
 from rdkit.Chem import DataStructs
+from rdkit.Chem import Descriptors
+from rdkit.Chem import EState
 from rdkit.Chem import rdMolDescriptors as rdmd
 from rdkit.ML.Cluster import Butina
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import KBinsDiscretizer
+from rdkit import RDLogger    
+
+RDLogger.DisableLog('rdApp.*')
+
+class Descriptor:
+    def __init__(self, VT, scaler, to_drop, features):
+        self.VT = VT
+        self.scaler = scaler
+        self.to_drop = to_drop
+        self.features = features
+
+    def calculate_from_smi(self, smiles):
+        feature_dict = get_all_descriptors(smiles)
+        fps = np.concatenate([feature_dict[feat] for feat in self.features], axis=1)
+        fps = self.VT.transform(fps)
+        fps = np.delete(fps, self.to_drop, axis=1)
+        fps = self.scaler.transform(fps)
+        return fps
+
+def get_all_descriptors(smiles):
+    mols = [Chem.MolFromSmiles(smi) for smi in smiles]
+    descriptors = {}
+    descriptors["ECFP"] = np.array(
+        [AllChem.GetMorganFingerprintAsBitVect(mol, 2, 2048) for mol in mols]
+    )
+    descriptors["FCFP"] = np.array(
+        [
+            AllChem.GetMorganFingerprintAsBitVect(mol, 2, 2048, useFeatures=True)
+            for mol in mols
+        ]
+    )
+    descriptors["Physchem"] = np.array(
+        [
+            [
+                Descriptors.MolWt(mol),
+                Descriptors.MolLogP(mol),
+                Descriptors.NumHDonors(mol),
+                Descriptors.NumHAcceptors(mol),
+                Descriptors.TPSA(mol),
+                Descriptors.NumRotatableBonds(mol),
+                Descriptors.NumAromaticRings(mol),
+                Descriptors.FractionCSP3(mol),
+                Descriptors.BalabanJ(mol),
+                Descriptors.Chi0n(mol),
+                Descriptors.Chi1n(mol),
+                Descriptors.Chi2n(mol),
+                Descriptors.Kappa1(mol),
+                Descriptors.Kappa2(mol),
+                Descriptors.Kappa3(mol),
+                Descriptors.LabuteASA(mol),
+                Descriptors.HallKierAlpha(mol),
+                EState.EState_VSA.EState_VSA1(mol),  # EState_VSA bin 1
+            ]
+            for mol in mols
+        ]
+    )
+    return descriptors
+
+def var_corr_scaler(X, VT, scaler):
+    X = VT.fit_transform(X)
+    corr_matrix = np.corrcoef(X, rowvar=False)
+    upper = np.triu(corr_matrix, k=1)
+    to_drop = [i for i in range(upper.shape[1]) if any(upper[:, i] > 0.9)]
+    X = np.delete(X, to_drop, axis=1)
+    X = scaler.fit_transform(X)
+    return X, VT, scaler, to_drop
 
 
 def stratified_split(smiles, y, random_state, test_size, n_bins):

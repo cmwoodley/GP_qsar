@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from gp_qsar.gp_qsar import Descriptor, GP_qsar, tune_hyperparameters
+from gp_qsar.gp_qsar import GP_qsar, tune_hyperparameters
 from .store import get_toy_dataset
 from .store import get_tuned_model
 
