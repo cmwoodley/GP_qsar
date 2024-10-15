@@ -97,12 +97,12 @@ class TanimotoKernel(gpytorch.kernels.Kernel):
                 *x1.shape[:-2], x1.shape[-2], dtype=x1.dtype, device=x1.device
             )
         return batch_tanimoto_sim(x1, x2)
-    
+
 class GPModel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood):
+    def __init__(self, train_x, train_y, likelihood, kernel):
         super(GPModel, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = None
+        self.covar_module = kernel
 
     def forward(self, x):
         mean = self.mean_module(x)
@@ -197,18 +197,7 @@ class GPytorch_qsar:
         else:
             train_censored = torch.tensor(self.censored)
 
-        class GPModel(gpytorch.models.ExactGP):
-            def __init__(self, train_x, train_y, likelihood):
-                super(GPModel, self).__init__(train_x, train_y, likelihood)
-                self.mean_module = gpytorch.means.ConstantMean()
-                self.covar_module = kernel
-
-            def forward(self, x):
-                mean = self.mean_module(x)
-                covar = self.covar_module(x)
-                return gpytorch.distributions.MultivariateNormal(mean, covar)
-            
-        self.predictor = GPModel(train_X, train_y, likelihood=self.likelihood)
+        self.predictor = GPModel(train_X, train_y, likelihood=self.likelihood, kernel=kernel)
 
         self.predictor.train()
         self.likelihood.train()            
@@ -366,21 +355,9 @@ def objective(trial, feature_dict, VT, scaler, y, censored, n_splits):
         else:
             censored_train = torch.tensor(censored[train_index], dtype=torch.float32)
             censored_test = torch.tensor(censored[test_index], dtype=torch.float32)
-
-
-        class GPModel(gpytorch.models.ExactGP):
-            def __init__(self, train_x, train_y, likelihood):
-                super(GPModel, self).__init__(train_x, train_y, likelihood)
-                self.mean_module = gpytorch.means.ConstantMean()
-                self.covar_module = kernel
-
-            def forward(self, x):
-                mean = self.mean_module(x)
-                covar = self.covar_module(x)
-                return gpytorch.distributions.MultivariateNormal(mean, covar)
             
         # Initialize model and likelihood
-        model = GPModel(train_x, train_y, likelihood)
+        model = GPModel(train_x, train_y, likelihood, kernel)
 
         # Training loop
         model.train()
