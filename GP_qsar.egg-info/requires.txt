@@ -1,4 +1,6 @@
 numpy
-pandas
 rdkit
 scikit-learn
+torch
+gpytorch
+optuna

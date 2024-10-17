@@ -5,17 +5,24 @@ from rdkit.Chem import Descriptors
 from rdkit.Chem import EState
 import itertools
 from copy import deepcopy
-from scipy.special import ndtr
-from scipy.stats import norm
+import optuna
 from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.model_selection import KFold
 import torch
 import gpytorch
 
+from .acquisition_functions import acquire_gPO 
+from .acquisition_functions import acquire_ts
+from .acquisition_functions import EI
+from .acquisition_functions import greedy_batch_selection
+from .acquisition_functions import PI
+from .acquisition_functions import UCB
+
 from .utils import Descriptor
 from .utils import get_all_descriptors
 from .utils import var_corr_scaler
+from .utils import get_cov_matrices_gpytorch
 
 ### Define Acquisition functions
 
@@ -109,20 +116,6 @@ class GPModel(gpytorch.models.ExactGP):
         covar = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean, covar)
 
-# Equations taken from https://github.com/modAL-python/modAL
-
-def PI(mean, std, max_val, tradeoff):
-    return ndtr((mean - max_val - tradeoff) / std)
-
-
-def EI(mean, std, max_val, tradeoff):
-    z = (mean - max_val - tradeoff) / std
-    return (mean - max_val - tradeoff) * ndtr(z) + std * norm.pdf(z)
-
-
-def UCB(mean, std, kappa):
-    return mean + kappa * std
-
 class GPytorch_qsar:
     def __init__(self, train_smiles, train_y, censored=None):
         self.train_smiles = train_smiles
@@ -141,7 +134,6 @@ class GPytorch_qsar:
         # Preprocessing tools
         self.VT = VarianceThreshold(threshold=0.0)
         self.scaler = StandardScaler()
-        self.y_scaler = StandardScaler()
 
         # Fit the model with training data
         self._prepare_data()
@@ -149,9 +141,8 @@ class GPytorch_qsar:
     def _prepare_data(self):
         self.feature_dict = get_all_descriptors(self.train_smiles)
 
-    def fit_tune_model(self, n_splits = 5):
+    def fit_tune_model(self, n_splits = 5, n_trials=100):
             
-        y_scaled = self.y_scaler.fit_transform(self.y.reshape(-1, 1)).ravel()
 
         (
             params,
@@ -160,7 +151,7 @@ class GPytorch_qsar:
             self.VT,
             self.scaler,
             to_drop,
-        ) = tune_model(self.feature_dict, y_scaled, self.VT, self.scaler, self.censored, n_splits)
+        ) = tune_model(self.feature_dict, self.y, self.VT, self.scaler, self.censored, n_splits, n_trials)
         self.descriptor = Descriptor(self.VT, self.scaler, to_drop, self.features)
 
         # Define kernel based on the optimised params
@@ -191,7 +182,7 @@ class GPytorch_qsar:
     )      
 
         train_X = torch.tensor(self.X)
-        train_y = torch.tensor(y_scaled)
+        train_y = torch.tensor(self.y)
         if self.censored is None:
             train_censored = None
         else:
@@ -221,15 +212,18 @@ class GPytorch_qsar:
             smiles = [smiles]
 
         test_fps = torch.tensor(self.descriptor.calculate_from_smi(smiles))
+        device = test_fps.device
+
+        self.predictor.to(device)
+        self.likelihood.to(device)
             
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             test_output = self.predictor(test_fps)
             test_output = self.likelihood(test_output)
-            predictions = test_output.mean.detach().numpy()
-            # inverse scale predictions
-            predictions = self.y_scaler.inverse_transform(predictions.reshape(-1,1))
+            predictions = test_output.mean.cpu().detach().numpy()
+
         if uncert:
-            std = test_output.stdev.numpy()
+            std = test_output.stddev.cpu().numpy()
             return predictions, std
         else:
             return predictions
@@ -243,11 +237,8 @@ class GPytorch_qsar:
         if isinstance(smiles, str):
             smiles = [smiles]
 
-        # Calculate descriptors for input SMILES
-        x = self.descriptor.calculate_from_smi(smiles)
-
         # Get GP predictions and uncertainties
-        predictions, std = self.predictor.predict(x, return_std=True)
+        predictions, std = self.predict_from_smiles(smiles, uncert=True)
 
         # Evaluate acquisition functions
         if acquisition_function == "EI":
@@ -266,14 +257,53 @@ class GPytorch_qsar:
             raise ValueError(
                 "Unsupported acquisition function. Choose from 'EI', 'PI', or 'UCB'."
             )
+        
+    def batch_selection(self, candidate_smiles, method = "greedy", batch_size = 10):
+        """
+        Perform greedy selection of candidate points to maximize entropy.
+        Takes candidate molecules and outputs selected molecules
+        
+        Parameters:
+            Candidate_smiles: np.array of smiles strings to screen (np.ndarray)
+            batch_size: Desired number of points to select for the batch
+            
+        Returns:
+            selected_indices: Indices of selected points that maximize entropy
+        """
+        candidate_x = self.descriptor.calculate_from_smi(candidate_smiles)
+        candidate_x = torch.tensor(candidate_x)
+
+        if method == "greedy":
+            K_train_train, K_train_candidates, K_candidates_candidates = get_cov_matrices_gpytorch(self.predictor, torch.tensor(self.X), candidate_x)
+            selected_indices = greedy_batch_selection(K_train_train, K_train_candidates, K_candidates_candidates, batch_size)
+
+            return selected_indices
+        elif method.lower() in ["gpo", "ts"]:
+            self.predictor.eval()
+            self.likelihood.eval()
+
+            output = self.likelihood(self.predictor(candidate_x))
+            mean, cov = output.mean.detach().numpy(), output.covariance_matrix.detach().numpy()
+
+            if method.lower() == "gpo":
+                top_samples, probs=acquire_gPO(mean, cov, batch_size=10)
+                return top_samples, probs
+
+            else:
+                top_samples = acquire_ts(mean, cov, batch_size=10)
+                return top_samples
+        else:
+            raise ValueError(
+                "Unsupported acquisition method. Select from ['greedy', 'gpo', 'ts']"
+            )
 
 
-def tune_model(feature_dict, y, VT, scaler, censored, n_splits = 5):
+def tune_model(feature_dict, y, VT, scaler, censored, n_splits = 5, n_trials = 100):
 
     VT_temp = deepcopy(VT)
     scaler_temp = deepcopy(scaler)
 
-    model_params, score = tune_hyperparameters(feature_dict, VT_temp, scaler_temp, y, censored, n_splits)
+    model_params, score = tune_hyperparameters(feature_dict, VT_temp, scaler_temp, y, censored, n_splits, n_trials)
 
     best_features = model_params["features"].split(",")
 
@@ -282,7 +312,6 @@ def tune_model(feature_dict, y, VT, scaler, censored, n_splits = 5):
 
     return model_params, X, best_features, VT, scaler, to_drop
 
-import optuna
 
 def objective(trial, feature_dict, VT, scaler, y, censored, n_splits):
 
@@ -294,8 +323,6 @@ def objective(trial, feature_dict, VT, scaler, y, censored, n_splits):
     ]
 
     feature_combinations = [x for x in feature_combinations if x != "Physchem"]
-
-
 
     # Use Optuna's suggest_categorical with the string-encoded feature combinations
     features = trial.suggest_categorical("features", feature_combinations)
@@ -331,7 +358,7 @@ def objective(trial, feature_dict, VT, scaler, y, censored, n_splits):
         kernel = gpytorch.kernels.ScaleKernel(TanimotoKernel())
 
     # Suggest likelihood noise level
-    noise_level = trial.suggest_float('noise', 1e-4, 1e-2)
+    noise_level = trial.suggest_float('noise', 1e-5, 1e-1)
     likelihood = gpytorch.likelihoods.GaussianLikelihood(
         noise_constraint=gpytorch.constraints.GreaterThan(noise_level)
     )
@@ -383,7 +410,7 @@ def objective(trial, feature_dict, VT, scaler, y, censored, n_splits):
     return np.mean(scores)
 
 
-def tune_hyperparameters(feature_dict, VT, scaler, y, censored=None, n_splits=5, n_trials=50):
+def tune_hyperparameters(feature_dict, VT, scaler, y, censored=None, n_splits=5, n_trials=100):
     study = optuna.create_study(direction='minimize')
 
     # Optimize the objective function

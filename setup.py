@@ -6,10 +6,11 @@ setup(
     packages=find_packages(),
     install_requires=[
         'numpy',
-        'pandas',
         'rdkit',
         'scikit-learn',
-        # Add any other dependencies your project requires
+        "torch",
+        'gpytorch',
+        "optuna",
     ],
     description='GP regressor for use in reinvent and modAL',
     author='Chris',

@@ -186,3 +186,47 @@ def splitter(
     raise ValueError(
         f"Unknown method '{method}'. Supported methods are: 'random', 'stratified', 'scaffold'"
     )
+
+# Helper function for obtaining covariance matrices from sklearn and gpytorch GP models
+
+def get_cov_matrices_sklearn(gp_model, X_train, candidates):
+    """
+    Get the covariance matrices from a scikit-learn GP model.
+    
+    Parameters:
+        gp_model: Trained scikit-learn GaussianProcessRegressor
+        X_train: Training data (np.ndarray)
+        candidates: Candidate points for selection (np.ndarray)
+    
+    Returns:
+        K_train_train: Covariance matrix of the training data
+        K_train_candidates: Covariance between training and candidate points
+        K_candidates_candidates: Covariance between candidate points
+    """
+    K_train_train = gp_model.kernel_(X_train)
+    K_train_candidates = gp_model.kernel_(X_train, candidates)
+    K_candidates_candidates = gp_model.kernel_(candidates)
+    
+    return K_train_train, K_train_candidates, K_candidates_candidates
+
+def get_cov_matrices_gpytorch(gp_model, X_train, candidates):
+    """
+    Get the covariance matrices from a GPyTorch GP model.
+    
+    Parameters:
+        gp_model: Trained GPyTorch GP model
+        X_train: Training data (torch.Tensor)
+        candidates: Candidate points for selection (torch.Tensor)
+    
+    Returns:
+        K_train_train: Covariance matrix of the training data (np.ndarray)
+        K_train_candidates: Covariance between training and candidate points (np.ndarray)
+        K_candidates_candidates: Covariance between candidate points (np.ndarray)
+    """
+    gp_model.eval()
+
+    K_train_train = gp_model.covar_module(X_train).evaluate().detach().numpy()
+    K_train_candidates = gp_model.covar_module(X_train, candidates).evaluate().detach().numpy()
+    K_candidates_candidates = gp_model.covar_module(candidates).evaluate().detach().numpy()
+
+    return K_train_train, K_train_candidates, K_candidates_candidates
