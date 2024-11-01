@@ -68,3 +68,4 @@ UCB = model.evaluate_acquisition_functions(test_smiles, "UCB")
 * Actually implement metadata to show model performance
 * Store names of selected features in some meaningful way
 * Improve testing framework
+* Add install option to make gpytorch an optional dependency because cuda is big
