@@ -1,8 +1,4 @@
 import numpy as np
-from rdkit import Chem
-from rdkit.Chem import AllChem
-from rdkit.Chem import Descriptors
-from rdkit.Chem import EState
 import itertools
 from copy import deepcopy
 from scipy.special import ndtr
@@ -18,25 +14,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.model_selection import GridSearchCV
 
+from .acquisition_functions import EI
+from .acquisition_functions import PI
+from .acquisition_functions import UCB
 from .utils import Descriptor
 from .utils import get_all_descriptors
 from .utils import var_corr_scaler
 
-### Define Acquisition functions
-# Equations taken from https://github.com/modAL-python/modAL
-
-
-def PI(mean, std, max_val, tradeoff):
-    return ndtr((mean - max_val - tradeoff) / std)
-
-
-def EI(mean, std, max_val, tradeoff):
-    z = (mean - max_val - tradeoff) / std
-    return (mean - max_val - tradeoff) * ndtr(z) + std * norm.pdf(z)
-
-
-def UCB(mean, std, kappa):
-    return mean + kappa * std
 
 class GP_qsar:
     def __init__(self, train_smiles, train_y):
@@ -118,7 +102,7 @@ class GP_qsar:
             raise ValueError(
                 "Unsupported acquisition function. Choose from 'EI', 'PI', or 'UCB'."
             )
-
+        
 
 def tune_model(gp, feature_dict, y, VT, scaler):
     feature_combinations = list(

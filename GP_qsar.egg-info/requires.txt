@@ -1,6 +1,0 @@
-numpy
-rdkit
-scikit-learn
-torch
-gpytorch
-optuna

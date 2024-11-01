@@ -1,11 +1,12 @@
 # GP_qsar
 
-Wrapper around Sklearn gaussian process model to enable use in Reinvent as a scoring function and for use in active learning. Use in REINVENT4 is identical to serialised QSARtuna models.
+Wrapper around Sklearn and Gpytorch gaussian process model to enable use in Reinvent as a scoring function and for use in active learning. Use in REINVENT4 is identical to serialised QSARtuna models.
 
 Features:
 * Automates feature selection and hyperparameter tuning/ kernel selection. 
 * Produces predictions from SMILES
-* Evaluates acquisiton functions for use in active learning
+* Evaluates single-sample acquisiton functions for use in active learning
+* Evaluates batch selection aquisition functions for use in active leaning
 
 Example config .toml files for use of these models in REINVENT4 are given in /example_config.
 

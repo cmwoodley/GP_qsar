@@ -1,8 +1,9 @@
 import pytest
 import numpy as np
-from gp_qsar.gp_qsar import GP_qsar, tune_hyperparameters
+from gp_qsar.gp_qsar import GP_qsar
 from .store import get_toy_dataset
 from .store import get_tuned_model
+from .store import get_drug_dataset
 
 def test_gp_qsar_initialization():
     # Test the initialization of GP_qsar class
@@ -60,3 +61,4 @@ def test_acquisition_function():
     # Unsupported function
     with pytest.raises(ValueError):
         model.evaluate_acquisition_functions("c1ccccc1OC", "not a function")
+

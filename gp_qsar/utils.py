@@ -10,9 +10,10 @@ from rdkit.ML.Cluster import Butina
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import KBinsDiscretizer
-from rdkit import RDLogger    
+from rdkit import RDLogger
 
-RDLogger.DisableLog('rdApp.*')
+RDLogger.DisableLog("rdApp.*")
+
 
 class Descriptor:
     def __init__(self, VT, scaler, to_drop, features):
@@ -28,6 +29,7 @@ class Descriptor:
         fps = np.delete(fps, self.to_drop, axis=1)
         fps = self.scaler.transform(fps)
         return fps
+
 
 def get_all_descriptors(smiles):
     mols = [Chem.MolFromSmiles(smi) for smi in smiles]
@@ -67,6 +69,7 @@ def get_all_descriptors(smiles):
         ]
     )
     return descriptors
+
 
 def var_corr_scaler(X, VT, scaler):
     X = VT.fit_transform(X)
@@ -187,37 +190,40 @@ def splitter(
         f"Unknown method '{method}'. Supported methods are: 'random', 'stratified', 'scaffold'"
     )
 
-# Helper function for obtaining covariance matrices from sklearn and gpytorch GP models
 
-def get_cov_matrices_sklearn(gp_model, X_train, candidates):
-    """
-    Get the covariance matrices from a scikit-learn GP model.
-    
-    Parameters:
-        gp_model: Trained scikit-learn GaussianProcessRegressor
-        X_train: Training data (np.ndarray)
-        candidates: Candidate points for selection (np.ndarray)
-    
-    Returns:
-        K_train_train: Covariance matrix of the training data
-        K_train_candidates: Covariance between training and candidate points
-        K_candidates_candidates: Covariance between candidate points
-    """
-    K_train_train = gp_model.kernel_(X_train)
-    K_train_candidates = gp_model.kernel_(X_train, candidates)
-    K_candidates_candidates = gp_model.kernel_(candidates)
-    
-    return K_train_train, K_train_candidates, K_candidates_candidates
+# Helper function for obtaining covariance matrices from sklearn and gpytorch GP models
+# Sklearn not currently implemented
+
+# def get_cov_matrices_sklearn(gp_model, X_train, candidates):
+#     """
+#     Get the covariance matrices from a scikit-learn GP model.
+
+#     Parameters:
+#         gp_model: Trained scikit-learn GaussianProcessRegressor
+#         X_train: Training data (np.ndarray)
+#         candidates: Candidate points for selection (np.ndarray)
+
+#     Returns:
+#         K_train_train: Covariance matrix of the training data
+#         K_train_candidates: Covariance between training and candidate points
+#         K_candidates_candidates: Covariance between candidate points
+#     """
+#     K_train_train = gp_model.kernel_(X_train)
+#     K_train_candidates = gp_model.kernel_(X_train, candidates)
+#     K_candidates_candidates = gp_model.kernel_(candidates)
+
+#     return K_train_train, K_train_candidates, K_candidates_candidates
+
 
 def get_cov_matrices_gpytorch(gp_model, X_train, candidates):
     """
     Get the covariance matrices from a GPyTorch GP model.
-    
+
     Parameters:
         gp_model: Trained GPyTorch GP model
         X_train: Training data (torch.Tensor)
         candidates: Candidate points for selection (torch.Tensor)
-    
+
     Returns:
         K_train_train: Covariance matrix of the training data (np.ndarray)
         K_train_candidates: Covariance between training and candidate points (np.ndarray)
@@ -225,8 +231,12 @@ def get_cov_matrices_gpytorch(gp_model, X_train, candidates):
     """
     gp_model.eval()
 
-    K_train_train = gp_model.covar_module(X_train).evaluate().detach().numpy()
-    K_train_candidates = gp_model.covar_module(X_train, candidates).evaluate().detach().numpy()
-    K_candidates_candidates = gp_model.covar_module(candidates).evaluate().detach().numpy()
+    K_train_train = gp_model.covar_module(X_train).to_dense().detach().numpy()
+    K_train_candidates = (
+        gp_model.covar_module(X_train, candidates).to_dense().detach().numpy()
+    )
+    K_candidates_candidates = (
+        gp_model.covar_module(candidates).to_dense().detach().numpy()
+    )
 
     return K_train_train, K_train_candidates, K_candidates_candidates
