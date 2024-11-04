@@ -237,13 +237,14 @@ class GPytorch_qsar:
         if isinstance(smiles, str):
             smiles = [smiles]
 
-        test_fps = torch.tensor(self.descriptor.calculate_from_smi(smiles))
+        test_fps = self.descriptor.calculate_from_smi(smiles)
+        test_fps = torch.tensor(test_fps)
         device = test_fps.device
 
         self.predictor.to(device)
         self.likelihood.to(device)
 
-        with torch.no_grad(), gpytorch.settings.fast_pred_var():
+        with torch.no_grad():
             test_output = self.predictor(test_fps)
             test_output = self.likelihood(test_output)
             predictions = test_output.mean.cpu().detach().numpy()
