@@ -73,11 +73,11 @@ def custom_log_likelihood(
 
     # Mask for right-censored data (censoring_mask == 1)
     right_censored_mask = censoring_mask == 1
-
+    print(right_censored_mask)
     if right_censored_mask.any():
         survival_probs = 1 - torch.distributions.Normal(
             mean[right_censored_mask], stddev[right_censored_mask]
-        ).cdf(target[right_censored_mask])
+        ).cdf(target[right_censored_mask].detach()) # Computing gradient at extremes of tails returns Nan leading to errors
         log_likelihood[right_censored_mask] = torch.log(survival_probs)
 
     # Mask for left- data (censoring_mask == -1)
@@ -86,7 +86,7 @@ def custom_log_likelihood(
     if left_censored_mask.any():
         cdf_probs = torch.distributions.Normal(
             mean[left_censored_mask], stddev[left_censored_mask]
-        ).cdf(target[left_censored_mask])
+        ).cdf(target[left_censored_mask].detach())
         log_likelihood[left_censored_mask] = torch.log(cdf_probs)
 
     return log_likelihood.mean()
