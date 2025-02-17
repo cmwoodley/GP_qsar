@@ -73,7 +73,6 @@ def custom_log_likelihood(
 
     # Mask for right-censored data (censoring_mask == 1)
     right_censored_mask = censoring_mask == 1
-    print(right_censored_mask)
     if right_censored_mask.any():
         survival_probs = 1 - torch.distributions.Normal(
             mean[right_censored_mask], stddev[right_censored_mask]
